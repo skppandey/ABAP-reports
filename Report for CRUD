@@ -1,0 +1,232 @@
+REPORT z1085836_crud.
+
+TABLES: z1344063_empdet.
+
+TYPES : BEGIN OF lty_z1344063_empdet,
+          mandt         TYPE mandt,
+          employee_id   TYPE zde_empid63,
+          employee_name TYPE zde_empnam,
+          dob           TYPE zde_dob63,
+          gender        TYPE zde_gndr,
+          mobile_no     TYPE zde_mobile_no,
+          company_name  TYPE zde_comp,
+        END OF lty_z1344063_empdet.
+
+DATA : lt_empdet TYPE TABLE OF lty_z1344063_empdet.
+DATA : lwa_empdet TYPE lty_z1344063_empdet.
+
+DATA : lv_start_time TYPE sy-uzeit.
+
+SELECTION-SCREEN : BEGIN OF BLOCK b1 WITH FRAME TITLE text-000.
+PARAMETERS : p_empid TYPE zde_empid63,
+             p_comp  TYPE zde_comp.
+SELECTION-SCREEN : END OF BLOCK b1.
+
+SELECTION-SCREEN : BEGIN OF BLOCK b2 WITH FRAME TITLE text-001.
+PARAMETERS : p_insert RADIOBUTTON GROUP rad USER-COMMAND flag DEFAULT 'X',
+             p_read   RADIOBUTTON GROUP rad ,
+             p_update RADIOBUTTON GROUP rad ,
+             p_delete RADIOBUTTON GROUP rad .
+*             p_modify RADIOBUTTON GROUP rad.
+SELECTION-SCREEN : END OF BLOCK b2.
+
+*SELECTION-SCREEN : BEGIN OF BLOCK b3 WITH FRAME TITLE text_002.
+PARAMETERS : p_empnam(20) TYPE c     MODIF ID se1   ,
+             p_dob        TYPE dats  MODIF ID se2   ,
+             p_gender(1)  TYPE c     MODIF ID se3  ,
+             p_mob_no(10) TYPE n     MODIF ID se4  .
+*SELECTION-SCREEN : END OF BLOCK b3.
+
+LOAD-OF-PROGRAM.
+  lv_start_time = sy-uzeit.
+
+INITIALIZATION.
+  p_comp = 'TCS'.
+
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+
+    CASE screen-group1.
+      WHEN 'SE1'.                          "TAKING PARAMETER 1.
+        IF p_insert = 'X'.                      "IF DISPLAY RADIOBUTTON IS SELECTED.
+          screen-active = '1'.
+        ENDIF.
+        IF p_read = 'X'.                        "IF READ RADIOBUTTON IS SELECTED.
+          screen-active = '0'.
+        ENDIF.
+        IF p_update = 'X'.                      "IF UPDATE RADIOBUTTON IS SELECTED.
+          screen-active = '1'.
+        ENDIF.
+        IF p_delete = 'X'.                      "IF DELETE RADIOBUTTON IS SELECTED.
+          screen-active = '0'.
+        ENDIF.
+*        IF  p_modify = 'X'.
+*          screen-active = '1'.
+*        ENDIF.
+        MODIFY SCREEN.
+
+      WHEN 'SE2'.
+        IF p_insert = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_read = 'X'.
+          screen-active = '0'.
+        ENDIF.
+        IF p_update = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_delete = 'X'.
+          screen-active = '0'.
+        ENDIF.
+*        IF  p_modify = 'X'.
+*          screen-active = '1'.
+*        ENDIF.
+        MODIFY SCREEN.
+
+      WHEN 'SE3'.
+        IF p_insert = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_read = 'X'.
+          screen-active = '0'.
+        ENDIF.
+        IF p_update = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_delete = 'X'.
+          screen-active = '0'.
+        ENDIF.
+*        IF  p_modify = 'X'.
+*          screen-active = '1'.
+*        ENDIF.
+        MODIFY SCREEN.
+
+      WHEN 'SE4'.
+        IF p_insert = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_read = 'X'.
+          screen-active = '0'.
+        ENDIF.
+        IF p_update = 'X'.
+          screen-active = '1'.
+        ENDIF.
+        IF p_delete = 'X'.
+          screen-active = '0'.
+        ENDIF.
+*        IF  p_modify = 'X'.
+*          screen-active = '1'.
+*        ENDIF.
+        MODIFY SCREEN.
+    ENDCASE.
+  ENDLOOP.
+
+START-OF-SELECTION.
+
+*AT SELECTION-SCREEN ON RADIOBUTTON GROUP rad.
+  IF p_insert = 'X'.
+    lwa_empdet-employee_id = p_empid.
+    lwa_empdet-employee_name = p_empnam.
+    lwa_empdet-dob = p_dob.
+    lwa_empdet-gender = p_gender.
+    lwa_empdet-mobile_no = p_mob_no.
+    lwa_empdet-company_name = p_comp.
+
+    INSERT z1344063_empdet FROM lwa_empdet.                              "INSERTING VALUES INTO TABLE.
+
+    IF sy-subrc = 0.
+      MESSAGE 'SUCCESSFULLY INSERTED' TYPE 'S'.
+    ELSEIF sy-subrc <> 0.
+      MESSAGE 'ERROR' TYPE 'E'.
+    ENDIF.
+  ENDIF.
+*  IF p_insert = 'X'.
+*
+*    IF p_empnam IS INITIAL.
+*      MESSAGE 'EMPLOYEE NAME FIELD CANNOT BE EMPTY' TYPE 'E'.
+*
+*    ELSEIF p_dob IS INITIAL.
+*      MESSAGE 'DATE OF BIRTH FIELD CANNOT BE EMPTY' TYPE 'E'.
+*
+*    ELSEIF p_gender IS INITIAL.
+*      MESSAGE 'GENDER FIELD CANNOT BE EMPTY' TYPE 'E'.
+*
+*    ELSEIF p_mob_no IS INITIAL.
+*      MESSAGE 'MOBILE NO. FIELD CANNOT BE EMPTY' TYPE 'E'.
+*
+*    ELSE.
+**    LWA_EMPDET-EMPLOYEE_ID = P_EMPID.
+*      lwa_empdet-employee_name = p_empnam.
+*      lwa_empdet-dob = p_dob.
+*      lwa_empdet-gender = p_gender.
+*      lwa_empdet-mobile_no = p_mob_no.
+**    LWA_EMPDET-COMPANY_NAME = P_COMP.
+*
+*    ENDIF.
+
+  IF p_read = 'X'.
+
+    SELECT * FROM z1344063_empdet INTO CORRESPONDING FIELDS OF TABLE lt_empdet WHERE employee_id = p_empid.
+
+    LOOP AT lt_empdet INTO lwa_empdet.
+      WRITE : lwa_empdet-employee_id, lwa_empdet-employee_name, lwa_empdet-dob, lwa_empdet-gender, lwa_empdet-mobile_no,lwa_empdet-company_name.
+    ENDLOOP.
+
+  ENDIF.
+
+  IF p_update = 'X'.
+    SELECT * FROM z1344063_empdet
+        INTO TABLE lt_empdet
+    WHERE employee_id = p_empid.
+
+    lwa_empdet-employee_name = p_empnam.
+    lwa_empdet-dob = p_dob.
+    lwa_empdet-gender = p_gender.
+    lwa_empdet-mobile_no = p_mob_no.
+    lwa_empdet-company_name = p_comp.
+
+    UPDATE z1344063_empdet SET employee_name = p_empnam
+    dob = p_dob  gender = p_gender  mobile_no = p_mob_no  company_name = p_comp WHERE employee_id = p_empid.
+    "UPDATING VALUES IN TABLE.
+
+    IF sy-subrc = 0.
+      MESSAGE 'SUCCESSFULLY UPDATED' TYPE 'S'.
+    ELSE.
+      MESSAGE 'INVALID ENTRY' TYPE 'E'.
+    ENDIF.
+
+  ENDIF.
+
+  IF p_delete = 'X'.
+
+    DELETE FROM z1344063_empdet WHERE employee_id = p_empid.
+
+    IF  sy-subrc = 0.
+      MESSAGE 'SUCCESSFULLY DELETED' TYPE 'S'.
+    ELSE.
+      MESSAGE 'INVALID ENTRY' TYPE 'E'.
+    ENDIF.
+
+  ENDIF.
+*
+*TOP-OF-PAGE.
+*WRITE:'Employee Details'.
+*END-OF-PAGE.
+
+*  IF p_modify = 'X'.
+*    SELECT * FROM z1344063_empdet
+*      INTO TABLE lt_empdet WHERE employee_id = p_empid.
+*
+*    lwa_empdet-employee_name = p_empnam.
+*    lwa_empdet-dob = p_dob.
+*    lwa_empdet-gender = p_gender.
+*    lwa_empdet-mobile_no = p_mob_no.
+*    lwa_empdet-company_name = p_comp.
+*
+*    MODIFY z1344063_empdet FROM lwa_empdet.
+*
+*    IF  sy-subrc = 0.
+*      MESSAGE 'SUCCESSFULLY MODIFIED' TYPE 'S'.
+*    ENDIF.
+
+*  ENDIF.
