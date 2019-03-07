@@ -1,0 +1,61 @@
+REPORT z1085836_getcursor.
+
+
+DATA: it_car  TYPE TABLE OF zanu_car,
+      ls_car  TYPE zanu_car,
+      it_car1 TYPE TABLE OF zanu_car1,
+      ls_car1 TYPE zanu_car1,
+      fnam    TYPE char20,
+      fval    TYPE char20.
+
+
+TOP-OF-PAGE.
+  FORMAT COLOR COL_HEADING INVERSE.
+  WRITE 'BASIC CAR DETAILS'.
+
+TOP-OF-PAGE DURING LINE-SELECTION.
+  FORMAT COLOR COL_HEADING INVERSE.
+  WRITE 'PRICE DETAILS OF CAR'.
+
+
+START-OF-SELECTION.
+
+  SELECT * FROM zanu_car INTO TABLE it_car.
+
+
+  FORMAT COLOR COL_NEGATIVE INVERSE.
+  WRITE:/,3 'CAR ID',
+         20 'CAR NAME'.
+  LOOP AT  it_car INTO ls_car.
+    FORMAT COLOR COL_POSITIVE INVERSE.
+    WRITE :/,3 ls_car-car_id,
+             20 ls_car-cname.
+
+
+
+  ENDLOOP.
+
+
+AT LINE-SELECTION.
+
+  GET CURSOR FIELD fnam VALUE fval.
+
+*  CONDENSE fnam.
+*  CONDENSE fval.
+
+  IF fnam = 'LS_CAR-CAR_ID'.
+    SELECT * FROM zanu_car1 INTO TABLE it_car1 WHERE car_id = fval.
+    FORMAT COLOR COL_NEGATIVE INVERSE.
+    WRITE:/,3 'CAR ID',
+           20 'CAR PRICE'.
+    LOOP AT  it_car1 INTO ls_car1.
+      FORMAT COLOR COL_POSITIVE INVERSE.
+      WRITE :/,3 ls_car1-car_id,
+               20 ls_car1-price.
+    ENDLOOP.
+
+  ENDIF.
+
+  IF fnam = 'LS_CAR-CNAME'.
+   write 'display something else'.
+  ENDIF.
