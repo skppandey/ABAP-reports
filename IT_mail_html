@@ -1,0 +1,164 @@
+REPORT ZTEST_DASHBOARD_ERROR.
+DATA: RECIPIENT TYPE  AD_SMTPADR.
+SELECT-OPTIONS: I_MAIL FOR RECIPIENT NO INTERVALS.
+TYPES:BEGIN OF TY_ZWMSER_PICKS,
+         SERIAL TYPE ZWMSER_SERIAL,
+         VBELN TYPE VBELN_VL,
+  END OF TY_ZWMSER_PICKS.
+TYPES:BEGIN OF TY_SNVT_A,
+         ERDAT TYPE ERDAT,
+         ERZET TYPE ERZET,
+         VBELN TYPE VBELN_VL,
+  END OF TY_SNVT_A.
+TYPES:BEGIN OF TY_SNVT_A1,
+       ERDAT TYPE ERDAT,
+       ERZET TYPE ERZET,
+       VBELN TYPE VBELN_VL,
+       VTYPE TYPE ZWMSER_VERIFICATION_TYPE,
+END OF TY_SNVT_A1.
+TYPES: BEGIN OF GY_SELECT,
+         SIGN   TYPE CHAR1,
+         OPTION TYPE CHAR2,
+         LOW    TYPE AD_SMTPADR,
+         HIGH   TYPE AD_SMTPADR,
+      END OF GY_SELECT.
+
+DATA:    LO_SEND_REQUEST TYPE REF TO CL_BCS VALUE IS INITIAL,
+         LO_DOCUMENT     TYPE REF TO CL_DOCUMENT_BCS VALUE IS INITIAL, "document object
+         I_TEXT          TYPE BCSY_TEXT, "Table for body
+         W_TEXT          LIKE LINE OF I_TEXT, "work area for message body
+         LO_SENDER       TYPE REF TO IF_SENDER_BCS VALUE IS INITIAL, "sender
+         LO_RECIPIENT    TYPE REF TO IF_RECIPIENT_BCS VALUE IS INITIAL,
+         P_SUB           TYPE CHAR50,
+         L_ATTSUBJECT    TYPE SOOD-OBJDES,
+*         LV_EMAIL_ADDR   TYPE ADR6-SMTP_ADDR,
+         LV_EMAIL_ADDR   TYPE GY_SELECT,
+         IT_FCAT         TYPE LVC_T_FCAT WITH HEADER LINE, " Fieldcatalog
+         T_HEADER        TYPE STANDARD TABLE OF W3HEAD WITH HEADER LINE,   "Header
+         T_FIELDS        TYPE STANDARD TABLE OF W3FIELDS WITH HEADER LINE, "Fields
+         T_HTML          TYPE STANDARD TABLE OF W3HTML,                      "Html
+         WA_HEADER       TYPE W3HEAD,
+         W_HEAD          TYPE W3HEAD,
+         IT_ZWMSER_PICKS TYPE TABLE OF TY_ZWMSER_PICKS,
+         IT_SNVT_A1      TYPE TABLE OF TY_SNVT_A1,
+         IT_SNVT_A       TYPE TABLE OF TY_SNVT_A,
+         LS_SNVT_A       TYPE TY_SNVT_A.
+FIELD-SYMBOLS: <LFS_SNVT_A1> TYPE TY_SNVT_A1.
+
+START-OF-SELECTION.
+  SELECT SERIAL VBELN UP TO 20 ROWS
+         INTO TABLE IT_ZWMSER_PICKS
+         FROM ZWMSER_PICKS
+         WHERE VFSTA = 'E' .
+  IF IT_ZWMSER_PICKS IS NOT INITIAL.
+    SELECT ERDAT ERZET VBELN VTYPE
+      FROM ZWMSER_SNVT_A
+          INTO TABLE IT_SNVT_A1
+           FOR ALL ENTRIES IN IT_ZWMSER_PICKS
+           WHERE VBELN = IT_ZWMSER_PICKS-VBELN AND
+                 SERIAL = IT_ZWMSER_PICKS-SERIAL.
+  ENDIF.
+  LOOP AT IT_SNVT_A1 ASSIGNING <LFS_SNVT_A1>.
+    CLEAR LS_SNVT_A.
+    IF <LFS_SNVT_A1>-VTYPE = '900'.
+      LS_SNVT_A-ERDAT = <LFS_SNVT_A1>-ERDAT.
+      LS_SNVT_A-ERZET = <LFS_SNVT_A1>-ERZET.
+      LS_SNVT_A-VBELN = <LFS_SNVT_A1>-VBELN.
+      APPEND LS_SNVT_A TO IT_SNVT_A.
+    ENDIF.
+  ENDLOOP.
+  SORT IT_SNVT_A BY ERDAT ERZET.
+
+*    *-Populate Fieldcatalog
+  IT_FCAT-COLTEXT = 'Date'.
+  APPEND IT_FCAT.
+  IT_FCAT-COLTEXT = 'Time'.
+  APPEND IT_FCAT.
+  IT_FCAT-COLTEXT = 'Delivery'.
+  APPEND IT_FCAT.
+
+*  *-Fill the Column headings and Properties
+  LOOP AT IT_FCAT.
+    W_HEAD-TEXT = IT_FCAT-COLTEXT.
+*-Populate the Column Headings
+    CALL FUNCTION 'WWW_ITAB_TO_HTML_HEADERS'
+      EXPORTING
+        FIELD_NR = SY-TABIX
+        TEXT     = W_HEAD-TEXT
+        FGCOLOR  = 'black'
+        BGCOLOR  = 'green'
+      TABLES
+        HEADER   = T_HEADER.
+*-Populate Column Properties
+    CALL FUNCTION 'WWW_ITAB_TO_HTML_LAYOUT'
+      EXPORTING
+        FIELD_NR = SY-TABIX
+        FGCOLOR  = 'black'
+        SIZE     = '3'
+      TABLES
+        FIELDS   = T_FIELDS.
+  ENDLOOP.
+*  *-Title of the Display
+  WA_HEADER-TEXT = 'Please find below a list of outbound deliveries with error:' .
+  WA_HEADER-FONT = 'Arial'.
+  WA_HEADER-SIZE = '2'.
+*-Preparing the HTML from Intenal Table
+  REFRESH T_HTML.
+  CALL FUNCTION 'WWW_ITAB_TO_HTML'
+    EXPORTING
+      TABLE_HEADER = WA_HEADER
+    TABLES
+      HTML         = T_HTML
+      FIELDS       = T_FIELDS
+      ROW_HEADER   = T_HEADER
+      ITABLE       = IT_SNVT_A.
+
+  P_SUB = 'OBD Serial verification errors on dashboard'.
+
+  CLASS CL_BCS DEFINITION LOAD.
+  LO_SEND_REQUEST = CL_BCS=>CREATE_PERSISTENT( ).
+
+  LO_DOCUMENT = CL_DOCUMENT_BCS=>CREATE_DOCUMENT( "create document
+    I_TYPE = 'HTM' "Type of document HTM, TXT etc
+    I_TEXT =  T_HTML "email body internal table
+    I_SUBJECT = P_SUB ). "email subject here p_sub input parameter
+
+*  Pass the document to send request
+  LO_SEND_REQUEST->SET_DOCUMENT( LO_DOCUMENT ).
+
+  TRY.
+    LO_SENDER = CL_SAPUSER_BCS=>CREATE( SY-UNAME ). "sender is the logged in user
+* Set sender to send request
+    LO_SEND_REQUEST->SET_SENDER(
+    EXPORTING
+    I_SENDER = LO_SENDER ).
+*    CATCH CX_ADDRESS_BCS.
+****Catch exception here
+  ENDTRY.
+
+  LOOP AT I_MAIL INTO LV_EMAIL_ADDR.
+    LO_RECIPIENT = CL_CAM_ADDRESS_BCS=>CREATE_INTERNET_ADDRESS( LV_EMAIL_ADDR-LOW ). "Here Recipient is email input p_email
+    TRY.
+      LO_SEND_REQUEST->ADD_RECIPIENT(
+          EXPORTING
+          I_RECIPIENT = LO_RECIPIENT
+          I_EXPRESS = 'X' ).
+*  CATCH CX_SEND_REQ_BCS INTO BCS_EXCEPTION .
+**Catch exception here
+    ENDTRY.
+  ENDLOOP.
+
+  TRY.
+    CALL METHOD LO_SEND_REQUEST->SET_SEND_IMMEDIATELY
+      EXPORTING
+        I_SEND_IMMEDIATELY = 'X'. "here selection screen input p_send
+*    CATCH CX_SEND_REQ_BCS INTO BCS_EXCEPTION .
+**Catch exception here
+  ENDTRY.
+  TRY.
+** Send email
+    LO_SEND_REQUEST->SEND(
+    EXPORTING
+    I_WITH_ERROR_SCREEN = 'X' ).
+    COMMIT WORK.
+  ENDTRY.
